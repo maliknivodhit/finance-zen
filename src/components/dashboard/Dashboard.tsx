@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { StatCard } from "./StatCard";
+import { StatCard, formatCurrency } from "./StatCard";
 import { TransactionForm } from "./TransactionForm";
 import { ExpenseChart } from "./ExpenseChart";
+import { FinancialChart } from "./FinancialChart";
+import { BudgetGoals } from "./BudgetGoals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -28,6 +30,7 @@ interface Transaction {
 export const Dashboard = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBudgetGoalsOpen, setIsBudgetGoalsOpen] = useState(false);
 
   // Load transactions from localStorage
   useEffect(() => {
@@ -70,6 +73,40 @@ export const Dashboard = () => {
       return acc;
     }, {} as Record<string, number>);
 
+  // Generate monthly financial data for the chart
+  const generateMonthlyData = () => {
+    const monthlyData: { [key: string]: { income: number; expenses: number } } = {};
+    
+    transactions.forEach(t => {
+      const month = new Date(t.date).toLocaleDateString('en-IN', { 
+        month: 'short', 
+        year: '2-digit' 
+      });
+      
+      if (!monthlyData[month]) {
+        monthlyData[month] = { income: 0, expenses: 0 };
+      }
+      
+      if (t.type === 'income') {
+        monthlyData[month].income += t.amount;
+      } else {
+        monthlyData[month].expenses += t.amount;
+      }
+    });
+
+    return Object.entries(monthlyData)
+      .map(([month, data]) => ({
+        month,
+        income: data.income,
+        expenses: data.expenses,
+        savings: data.income - data.expenses,
+      }))
+      .slice(-6); // Last 6 months
+  };
+
+  const monthlyFinancialData = generateMonthlyData();
+
+  // Expense chart data for pie chart
   const expenseChartData = Object.entries(expenseByCategory).map(([category, amount]) => ({
     category,
     amount,
@@ -104,7 +141,11 @@ export const Dashboard = () => {
                 <Plus className="mr-2 h-5 w-5" />
                 Add Transaction
               </Button>
-              <Button variant="outline" size="lg">
+              <Button 
+                variant="outline" 
+                size="lg"
+                onClick={() => setIsBudgetGoalsOpen(true)}
+              >
                 <Target className="mr-2 h-5 w-5" />
                 Set Budget Goals
               </Button>
@@ -119,21 +160,21 @@ export const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
             title="Total Balance"
-            value={`$${balance.toFixed(2)}`}
+            value={formatCurrency(balance)}
             icon={DollarSign}
             variant={balance >= 0 ? "success" : "danger"}
             trend={{ value: 12.5, isPositive: balance >= 0 }}
           />
           <StatCard
             title="Total Income"
-            value={`$${totalIncome.toFixed(2)}`}
+            value={formatCurrency(totalIncome)}
             icon={TrendingUp}
             variant="success"
             trend={{ value: 8.2, isPositive: true }}
           />
           <StatCard
             title="Total Expenses"
-            value={`$${totalExpenses.toFixed(2)}`}
+            value={formatCurrency(totalExpenses)}
             icon={TrendingDown}
             variant="warning"
             trend={{ value: 3.1, isPositive: false }}
@@ -146,10 +187,15 @@ export const Dashboard = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Expense Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Financial Overview Chart */}
+          <FinancialChart data={monthlyFinancialData} />
+          
+          {/* Expense Breakdown Chart */}
           <ExpenseChart data={expenseChartData} />
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
           {/* Recent Transactions */}
           <Card className="glass-card">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -192,7 +238,7 @@ export const Dashboard = () => {
                         transaction.type === "income" ? "text-success" : "text-danger"
                       }`}>
                         {transaction.type === "income" ? "+" : "-"}
-                        ${transaction.amount.toFixed(2)}
+                        {formatCurrency(transaction.amount)}
                       </div>
                     </div>
                   ))}
@@ -208,6 +254,16 @@ export const Dashboard = () => {
           </Card>
         </div>
       </section>
+
+      {/* Budget Goals Modal */}
+      <BudgetGoals
+        isOpen={isBudgetGoalsOpen}
+        onToggle={() => setIsBudgetGoalsOpen(!isBudgetGoalsOpen)}
+        expenses={Object.entries(expenseByCategory).map(([category, amount]) => ({
+          category,
+          amount,
+        }))}
+      />
 
       {/* Transaction Form */}
       <TransactionForm
