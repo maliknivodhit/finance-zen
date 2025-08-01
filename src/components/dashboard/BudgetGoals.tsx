@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,9 +14,7 @@ import { formatCurrency } from "./StatCard";
 interface BudgetGoal {
   id: string;
   category: string;
-  targetAmount: number;
-  currentAmount: number;
-  month: string;
+  monthlyLimit: number;
 }
 
 interface BudgetGoalsProps {
@@ -34,83 +34,141 @@ const expenseCategories = [
 ];
 
 export const BudgetGoals = ({ isOpen, onToggle, expenses }: BudgetGoalsProps) => {
-  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>(() => {
-    const saved = localStorage.getItem("finance-tracker-budget-goals");
-    return saved ? JSON.parse(saved) : [];
-  });
-  
+  const [budgetGoals, setBudgetGoals] = useState<BudgetGoal[]>([]);
   const [category, setCategory] = useState("");
-  const [targetAmount, setTargetAmount] = useState("");
+  const [monthlyLimit, setMonthlyLimit] = useState("");
+  const [loading, setLoading] = useState(false);
+  
+  const { session } = useAuth();
   const { toast } = useToast();
 
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+  // Load budget goals from database
+  useEffect(() => {
+    if (session?.user && isOpen) {
+      loadBudgetGoals();
+    }
+  }, [session, isOpen]);
 
-  const saveBudgetGoals = (goals: BudgetGoal[]) => {
-    setBudgetGoals(goals);
-    localStorage.setItem("finance-tracker-budget-goals", JSON.stringify(goals));
+  const loadBudgetGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('budget_goals')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load budget goals",
+          variant: "destructive",
+        });
+      } else {
+        const formattedGoals = data.map(goal => ({
+          id: goal.id,
+          category: goal.category,
+          monthlyLimit: parseFloat(goal.monthly_limit.toString()),
+        }));
+        setBudgetGoals(formattedGoals);
+      }
+    } catch (error) {
+      console.error('Error loading budget goals:', error);
+    }
   };
 
-  const addBudgetGoal = () => {
-    if (!category || !targetAmount) {
+  const addBudgetGoal = async () => {
+    if (!session?.user || !category || !monthlyLimit) {
       toast({
         title: "Missing Information",
-        description: "Please select a category and enter a target amount.",
+        description: "Please select a category and enter a budget limit.",
         variant: "destructive",
       });
       return;
     }
 
-    const existingGoal = budgetGoals.find(
-      goal => goal.category === category && goal.month === currentMonth
-    );
-
+    // Check if goal already exists for this category
+    const existingGoal = budgetGoals.find(goal => goal.category === category);
     if (existingGoal) {
       toast({
         title: "Goal Already Exists",
-        description: "A budget goal for this category already exists this month.",
+        description: "A budget goal for this category already exists.",
         variant: "destructive",
       });
       return;
     }
-
-    const currentExpense = expenses
-      .filter(e => e.category === category)
-      .reduce((sum, e) => sum + e.amount, 0);
-
-    const newGoal: BudgetGoal = {
-      id: Date.now().toString(),
-      category,
-      targetAmount: parseFloat(targetAmount),
-      currentAmount: currentExpense,
-      month: currentMonth,
-    };
-
-    saveBudgetGoals([...budgetGoals, newGoal]);
-    setCategory("");
-    setTargetAmount("");
     
-    toast({
-      title: "Budget Goal Set",
-      description: `Budget goal of ${formatCurrency(parseFloat(targetAmount))} set for ${category}.`,
-    });
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('budget_goals')
+        .insert({
+          user_id: session.user.id,
+          category: category,
+          monthly_limit: parseFloat(monthlyLimit),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add budget goal",
+          variant: "destructive",
+        });
+      } else {
+        const newGoal: BudgetGoal = {
+          id: data.id,
+          category: data.category,
+          monthlyLimit: parseFloat(data.monthly_limit.toString()),
+        };
+        setBudgetGoals(prev => [...prev, newGoal]);
+        setCategory("");
+        setMonthlyLimit("");
+        toast({
+          title: "Success",
+          description: `Budget goal of ${formatCurrency(parseFloat(monthlyLimit))} set for ${category}.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error adding budget goal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add budget goal",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteBudgetGoal = (id: string) => {
-    saveBudgetGoals(budgetGoals.filter(goal => goal.id !== id));
-    toast({
-      title: "Goal Deleted",
-      description: "Budget goal has been removed.",
-    });
-  };
+  const removeBudgetGoal = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('budget_goals')
+        .delete()
+        .eq('id', id);
 
-  // Update current amounts based on expenses
-  const updatedGoals = budgetGoals.map(goal => {
-    const currentExpense = expenses
-      .filter(e => e.category === goal.category)
-      .reduce((sum, e) => sum + e.amount, 0);
-    
-    return { ...goal, currentAmount: currentExpense };
-  });
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to remove budget goal",
+          variant: "destructive",
+        });
+      } else {
+        setBudgetGoals(prev => prev.filter(goal => goal.id !== id));
+        toast({
+          title: "Success",
+          description: "Budget goal removed successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error removing budget goal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove budget goal",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -147,30 +205,34 @@ export const BudgetGoals = ({ isOpen, onToggle, expenses }: BudgetGoalsProps) =>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="target-amount">Monthly Budget (₹)</Label>
+                <Label htmlFor="monthly-limit">Monthly Budget (₹)</Label>
                 <Input
-                  id="target-amount"
+                  id="monthly-limit"
                   type="number"
                   step="0.01"
                   placeholder="10000"
-                  value={targetAmount}
-                  onChange={(e) => setTargetAmount(e.target.value)}
+                  value={monthlyLimit}
+                  onChange={(e) => setMonthlyLimit(e.target.value)}
                 />
               </div>
             </div>
-            <Button onClick={addBudgetGoal} variant="gradient" className="w-full">
+            <Button onClick={addBudgetGoal} variant="gradient" className="w-full" disabled={loading}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Budget Goal
+              {loading ? 'Adding...' : 'Add Budget Goal'}
             </Button>
           </div>
 
           {/* Existing Goals */}
           <div className="space-y-4">
-            <h3 className="font-medium">Current Month Goals</h3>
-            {updatedGoals.length > 0 ? (
+            <h3 className="font-medium">Current Budget Goals</h3>
+            {budgetGoals.length > 0 ? (
               <div className="space-y-3">
-                {updatedGoals.map((goal) => {
-                  const progress = (goal.currentAmount / goal.targetAmount) * 100;
+                {budgetGoals.map((goal) => {
+                  const currentExpense = expenses
+                    .filter(e => e.category === goal.category)
+                    .reduce((sum, e) => sum + e.amount, 0);
+                  
+                  const progress = goal.monthlyLimit > 0 ? (currentExpense / goal.monthlyLimit) * 100 : 0;
                   const isOverBudget = progress > 100;
                   
                   return (
@@ -182,7 +244,7 @@ export const BudgetGoals = ({ isOpen, onToggle, expenses }: BudgetGoalsProps) =>
                         <div>
                           <h4 className="font-medium">{goal.category}</h4>
                           <p className="text-sm text-muted-foreground">
-                            {formatCurrency(goal.currentAmount)} of {formatCurrency(goal.targetAmount)}
+                            {formatCurrency(currentExpense)} of {formatCurrency(goal.monthlyLimit)}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -198,7 +260,7 @@ export const BudgetGoals = ({ isOpen, onToggle, expenses }: BudgetGoalsProps) =>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={() => deleteBudgetGoal(goal.id)}
+                            onClick={() => removeBudgetGoal(goal.id)}
                             className="h-8 w-8 text-muted-foreground hover:text-danger"
                           >
                             <X className="h-4 w-4" />
@@ -213,7 +275,7 @@ export const BudgetGoals = ({ isOpen, onToggle, expenses }: BudgetGoalsProps) =>
                       
                       {isOverBudget && (
                         <p className="text-sm text-danger">
-                          ⚠️ Over budget by {formatCurrency(goal.currentAmount - goal.targetAmount)}
+                          ⚠️ Over budget by {formatCurrency(currentExpense - goal.monthlyLimit)}
                         </p>
                       )}
                     </div>

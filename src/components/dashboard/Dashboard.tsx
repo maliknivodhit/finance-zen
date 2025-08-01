@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { StatCard, formatCurrency } from "./StatCard";
 import { TransactionForm } from "./TransactionForm";
 import { ExpenseChart } from "./ExpenseChart";
@@ -6,6 +9,7 @@ import { FinancialChart } from "./FinancialChart";
 import { BudgetGoals } from "./BudgetGoals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -13,7 +17,7 @@ import {
   PiggyBank,
   Receipt,
   Target,
-  Calendar,
+  LogOut,
   Plus
 } from "lucide-react";
 import heroImage from "@/assets/finance-hero.jpg";
@@ -31,27 +35,124 @@ export const Dashboard = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBudgetGoalsOpen, setIsBudgetGoalsOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
+  const { user, session, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-  // Load transactions from localStorage
+  // Redirect to auth if not authenticated
   useEffect(() => {
-    const saved = localStorage.getItem("finance-tracker-transactions");
-    if (saved) {
-      setTransactions(JSON.parse(saved));
+    if (!authLoading && !session) {
+      navigate('/auth');
     }
-  }, []);
+  }, [authLoading, session, navigate]);
 
-  // Save transactions to localStorage
+  // Load transactions from database
   useEffect(() => {
-    localStorage.setItem("finance-tracker-transactions", JSON.stringify(transactions));
-  }, [transactions]);
+    if (session?.user) {
+      loadTransactions();
+    }
+  }, [session]);
 
-  const addTransaction = (newTransaction: Omit<Transaction, "id">) => {
-    const transaction = {
-      ...newTransaction,
-      id: Date.now().toString(),
-    };
-    setTransactions(prev => [transaction, ...prev]);
+  const loadTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to load transactions",
+          variant: "destructive",
+        });
+      } else {
+        const formattedTransactions = data.map(expense => ({
+          id: expense.id,
+          type: expense.type as "income" | "expense",
+          amount: parseFloat(expense.amount.toString()),
+          category: expense.category,
+          description: expense.description || "",
+          date: expense.date,
+        }));
+        setTransactions(formattedTransactions);
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const addTransaction = async (newTransaction: Omit<Transaction, "id">) => {
+    if (!session?.user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({
+          user_id: session.user.id,
+          type: newTransaction.type,
+          amount: newTransaction.amount,
+          category: newTransaction.category,
+          description: newTransaction.description,
+          date: newTransaction.date,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add transaction",
+          variant: "destructive",
+        });
+      } else {
+        const formattedTransaction = {
+          id: data.id,
+          type: data.type as "income" | "expense",
+          amount: parseFloat(data.amount.toString()),
+          category: data.category,
+          description: data.description || "",
+          date: data.date,
+        };
+        setTransactions(prev => [formattedTransaction, ...prev]);
+        toast({
+          title: "Success",
+          description: "Transaction added successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add transaction",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
 
   // Calculate financial metrics
   const totalIncome = transactions
@@ -126,9 +227,15 @@ export const Dashboard = () => {
         />
         <div className="relative container mx-auto px-6 py-16">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
-              FinanceZen
-            </h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
+                FinanceZen
+              </h1>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            </div>
             <p className="text-xl text-muted-foreground mb-8">
               Take control of your financial future with intelligent tracking and insights
             </p>
