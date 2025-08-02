@@ -18,8 +18,24 @@ import {
   Receipt,
   Target,
   LogOut,
-  Plus
+  Plus,
+  Calculator,
+  Brain,
+  Calendar,
+  Coins,
+  FileText,
+  Bell
 } from "lucide-react";
+import { TaxCalculator } from "@/components/financial/TaxCalculator";
+import { SavingsGrowthCalculator } from "@/components/financial/SavingsGrowthCalculator";
+import { SIPCalculator } from "@/components/financial/SIPCalculator";
+import { SmartAlerts } from "@/components/financial/SmartAlerts";
+import { MonthlyReport } from "@/components/financial/MonthlyReport";
+import { CalendarView } from "@/components/financial/CalendarView";
+import { AIInsights } from "@/components/financial/AIInsights";
+import { CryptoCurrencyTracker } from "@/components/financial/CryptoCurrencyTracker";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import heroImage from "@/assets/finance-hero.jpg";
 
 interface Transaction {
@@ -231,10 +247,13 @@ export const Dashboard = () => {
               <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-primary to-success bg-clip-text text-transparent">
                 FinanceZen
               </h1>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
+              <div className="flex gap-2">
+                <ThemeToggle />
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
             </div>
             <p className="text-xl text-muted-foreground mb-8">
               Take control of your financial future with intelligent tracking and insights
@@ -302,64 +321,67 @@ export const Dashboard = () => {
           <ExpenseChart data={expenseChartData} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
-          {/* Recent Transactions */}
-          <Card className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Receipt className="h-5 w-5" />
-                Recent Transactions
-              </CardTitle>
-              <Button variant="outline" size="sm">
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {recentTransactions.length > 0 ? (
-                <div className="space-y-3">
-                  {recentTransactions.map((transaction) => (
-                    <div 
-                      key={transaction.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/30 transition-smooth hover:bg-muted/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${
-                          transaction.type === "income" 
-                            ? "bg-success-light text-success" 
-                            : "bg-danger-light text-danger"
-                        }`}>
-                          {transaction.type === "income" ? (
-                            <TrendingUp className="h-4 w-4" />
-                          ) : (
-                            <TrendingDown className="h-4 w-4" />
-                          )}
+        {/* Enhanced Features Tabs */}
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="grid w-full grid-cols-8">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="tax">Tax Calc</TabsTrigger>
+            <TabsTrigger value="savings">Savings</TabsTrigger>
+            <TabsTrigger value="sip">SIP Calc</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsTrigger value="crypto">Crypto</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5" />
+                  Recent Transactions
+                </CardTitle>
+                <Button variant="outline" size="sm">View All</Button>
+              </CardHeader>
+              <CardContent>
+                {recentTransactions.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentTransactions.map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-full ${transaction.type === "income" ? "bg-success-light text-success" : "bg-danger-light text-danger"}`}>
+                            {transaction.type === "income" ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                          </div>
+                          <div>
+                            <p className="font-medium">{transaction.category}</p>
+                            <p className="text-sm text-muted-foreground">{new Date(transaction.date).toLocaleDateString()}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{transaction.category}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(transaction.date).toLocaleDateString()}
-                          </p>
+                        <div className={`font-semibold ${transaction.type === "income" ? "text-success" : "text-danger"}`}>
+                          {transaction.type === "income" ? "+" : "-"}{formatCurrency(transaction.amount)}
                         </div>
                       </div>
-                      <div className={`font-semibold ${
-                        transaction.type === "income" ? "text-success" : "text-danger"
-                      }`}>
-                        {transaction.type === "income" ? "+" : "-"}
-                        {formatCurrency(transaction.amount)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No transactions yet</p>
-                  <p className="text-sm">Start by adding your first transaction</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No transactions yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            <AIInsights transactions={transactions} />
+          </TabsContent>
+
+          <TabsContent value="tax"><TaxCalculator transactions={transactions} /></TabsContent>
+          <TabsContent value="savings"><SavingsGrowthCalculator currentSavings={balance > 0 ? balance : 0} /></TabsContent>
+          <TabsContent value="sip"><SIPCalculator /></TabsContent>
+          <TabsContent value="alerts"><SmartAlerts transactions={transactions} budgetGoals={[]} /></TabsContent>
+          <TabsContent value="reports"><MonthlyReport transactions={transactions} /></TabsContent>
+          <TabsContent value="calendar"><CalendarView transactions={transactions.map(t => ({ ...t, description: t.description || '' }))} /></TabsContent>
+          <TabsContent value="crypto"><CryptoCurrencyTracker /></TabsContent>
+        </Tabs>
       </section>
 
       {/* Budget Goals Modal */}
