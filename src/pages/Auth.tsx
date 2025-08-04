@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Auth = () => {
+  console.log('Auth component loading...');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -19,10 +20,17 @@ const Auth = () => {
 
   // Check if user is already authenticated
   useEffect(() => {
+    console.log('Auth useEffect running, checking user session...');
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Session check result:', session);
+        if (session) {
+          console.log('User authenticated, redirecting to home...');
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
       }
     };
     checkUser();
@@ -86,7 +94,6 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
-      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       <Card className="w-full max-w-md relative backdrop-blur-sm border-primary/20 shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg"></div>
         <CardHeader className="relative">
