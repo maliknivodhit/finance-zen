@@ -85,12 +85,19 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Finance Tracker</CardTitle>
-          <CardDescription className="text-center">
-            Manage your expenses and budget goals
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+      <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+      <Card className="w-full max-w-md relative backdrop-blur-sm border-primary/20 shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg"></div>
+        <CardHeader className="relative">
+          <div className="mx-auto mb-4 w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
+            <span className="text-2xl font-bold text-primary-foreground">₹</span>
+          </div>
+          <CardTitle className="text-3xl text-center bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-bold">
+            FinanceZen
+          </CardTitle>
+          <CardDescription className="text-center text-muted-foreground">
+            Your intelligent financial companion
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,159 +1,211 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calculator, IndianRupee, AlertTriangle } from "lucide-react";
-import { formatCurrency } from "../dashboard/StatCard";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Calculator, TrendingUp, PiggyBank, IndianRupee } from 'lucide-react';
 
-interface TaxCalculatorProps {
-  transactions: Array<{
-    type: "income" | "expense";
-    amount: number;
-    category: string;
-    date: string;
-  }>;
+interface Transaction {
+  id: string;
+  amount: number;
+  category: string;
+  description: string;
+  date: string;
+  type: 'income' | 'expense';
 }
 
-// Tax slabs for FY 2024-25 (New Regime)
-const TAX_SLABS = [
-  { min: 0, max: 300000, rate: 0 },
-  { min: 300000, max: 700000, rate: 5 },
-  { min: 700000, max: 1000000, rate: 10 },
-  { min: 1000000, max: 1200000, rate: 15 },
-  { min: 1200000, max: 1500000, rate: 20 },
-  { min: 1500000, max: Infinity, rate: 30 },
-];
-
-const SECTION_80C_LIMIT = 150000;
+interface TaxCalculatorProps {
+  transactions: Transaction[];
+}
 
 export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
   const [annualIncome, setAnnualIncome] = useState(0);
-  const [calculatedTax, setCalculatedTax] = useState(0);
-  const [potentialSavings, setPotentialSavings] = useState(0);
+  const [taxLiability, setTaxLiability] = useState(0);
+  const [taxSavingSuggestions, setTaxSavingSuggestions] = useState<string[]>([]);
 
-  useEffect(() => {
-    // Calculate annual income from salary transactions
-    const salaryTransactions = transactions.filter(
-      t => t.type === "income" && 
-      (t.category.toLowerCase().includes("salary") || 
-       t.category.toLowerCase().includes("job") ||
-       t.category.toLowerCase().includes("work"))
-    );
-
-    const monthlyIncomes = salaryTransactions.reduce((acc, t) => {
-      const month = new Date(t.date).toISOString().slice(0, 7);
-      acc[month] = (acc[month] || 0) + t.amount;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const avgMonthlyIncome = Object.values(monthlyIncomes).length > 0 
-      ? Object.values(monthlyIncomes).reduce((sum, amount) => sum + amount, 0) / Object.values(monthlyIncomes).length
-      : 0;
-
-    const projectedAnnual = avgMonthlyIncome * 12;
-    setAnnualIncome(projectedAnnual);
-  }, [transactions]);
-
-  useEffect(() => {
-    // Calculate tax based on income
+  // Indian tax slabs for 2024-25 (New Tax Regime)
+  const calculateTax = (income: number) => {
     let tax = 0;
-    let remainingIncome = annualIncome;
-
-    for (const slab of TAX_SLABS) {
-      if (remainingIncome <= 0) break;
-      
-      const taxableInThisSlab = Math.min(
-        remainingIncome,
-        slab.max - slab.min
-      );
-      
-      tax += (taxableInThisSlab * slab.rate) / 100;
-      remainingIncome -= taxableInThisSlab;
+    
+    if (income <= 300000) {
+      tax = 0;
+    } else if (income <= 700000) {
+      tax = (income - 300000) * 0.05;
+    } else if (income <= 1000000) {
+      tax = 20000 + (income - 700000) * 0.10;
+    } else if (income <= 1200000) {
+      tax = 50000 + (income - 1000000) * 0.15;
+    } else if (income <= 1500000) {
+      tax = 80000 + (income - 1200000) * 0.20;
+    } else {
+      tax = 140000 + (income - 1500000) * 0.30;
     }
 
-    setCalculatedTax(tax);
+    return tax;
+  };
 
-    // Calculate potential savings through 80C
-    const maxSavings = Math.min(SECTION_80C_LIMIT, annualIncome * 0.3);
-    const taxOnSavings = maxSavings * 0.2; // Approx 20% tax rate
-    setPotentialSavings(taxOnSavings);
-  }, [annualIncome]);
+  const getTaxSavingSuggestions = (income: number) => {
+    const suggestions = [];
+    
+    if (income > 300000) {
+      suggestions.push("Invest ₹1,50,000 in ELSS mutual funds under Section 80C");
+      suggestions.push("Consider PPF investment for long-term tax savings");
+    }
+    
+    if (income > 500000) {
+      suggestions.push("Health insurance premium up to ₹25,000 under Section 80D");
+      suggestions.push("NPS investment up to ₹50,000 under Section 80CCD(1B)");
+    }
+    
+    if (income > 1000000) {
+      suggestions.push("Consider House Rent Allowance (HRA) exemption if applicable");
+      suggestions.push("Explore tax-saving fixed deposits");
+    }
 
-  const effectiveTaxRate = annualIncome > 0 ? (calculatedTax / annualIncome) * 100 : 0;
+    return suggestions;
+  };
+
+  useEffect(() => {
+    // Detect salary transactions (assuming salary is regular monthly income)
+    const salaryTransactions = transactions.filter(
+      t => t.type === 'income' && 
+      (t.category.toLowerCase().includes('salary') || 
+       t.category.toLowerCase().includes('income') ||
+       t.description.toLowerCase().includes('salary'))
+    );
+
+    if (salaryTransactions.length > 0) {
+      // Calculate average monthly salary and project annually
+      const totalSalary = salaryTransactions.reduce((sum, t) => sum + t.amount, 0);
+      const avgMonthlySalary = totalSalary / salaryTransactions.length;
+      const projectedAnnual = avgMonthlySalary * 12;
+      
+      setAnnualIncome(projectedAnnual);
+      setTaxLiability(calculateTax(projectedAnnual));
+      setTaxSavingSuggestions(getTaxSavingSuggestions(projectedAnnual));
+    }
+  }, [transactions]);
+
+  const taxRate = annualIncome > 0 ? (taxLiability / annualIncome) * 100 : 0;
+  const netIncome = annualIncome - taxLiability;
 
   return (
-    <Card className="glass-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calculator className="h-5 w-5" />
-          Tax Calculator & Estimator
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-muted/30 p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <IndianRupee className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Projected Annual Income</span>
+    <div className="space-y-6">
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-primary">
+            <Calculator className="h-5 w-5" />
+            Tax Calculator & Income Estimator
+          </CardTitle>
+          <CardDescription>
+            Auto-calculated based on your salary transactions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Annual Income</span>
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                ₹{annualIncome.toLocaleString('en-IN')}
+              </div>
             </div>
-            <p className="text-2xl font-bold text-primary">
-              {formatCurrency(annualIncome)}
-            </p>
+            
+            <div className="p-4 rounded-lg bg-gradient-to-br from-danger/10 to-danger/5 border border-danger/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Calculator className="h-4 w-4 text-danger" />
+                <span className="text-sm font-medium">Tax Liability</span>
+              </div>
+              <div className="text-2xl font-bold text-danger">
+                ₹{taxLiability.toLocaleString('en-IN')}
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-lg bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
+              <div className="flex items-center gap-2 mb-2">
+                <IndianRupee className="h-4 w-4 text-success" />
+                <span className="text-sm font-medium">Net Income</span>
+              </div>
+              <div className="text-2xl font-bold text-success">
+                ₹{netIncome.toLocaleString('en-IN')}
+              </div>
+            </div>
+            
+            <div className="p-4 rounded-lg bg-gradient-to-br from-warning/10 to-warning/5 border border-warning/20">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm font-medium">Effective Tax Rate</span>
+              </div>
+              <div className="text-2xl font-bold text-warning mb-2">
+                {taxRate.toFixed(2)}%
+              </div>
+              <Progress value={taxRate} className="h-2" />
+            </div>
           </div>
 
-          <div className="bg-warning-light p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Calculator className="h-4 w-4 text-warning" />
-              <span className="text-sm font-medium">Estimated Tax</span>
-            </div>
-            <p className="text-2xl font-bold text-warning">
-              {formatCurrency(calculatedTax)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {effectiveTaxRate.toFixed(1)}% effective rate
-            </p>
-          </div>
+          {annualIncome > 0 && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
+                <h4 className="font-semibold flex items-center gap-2 mb-4 text-success">
+                  <PiggyBank className="h-4 w-4" />
+                  Tax Saving Suggestions
+                </h4>
+                <div className="grid gap-3">
+                  {taxSavingSuggestions.map((suggestion, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-background/50">
+                      <Badge variant="secondary" className="mt-0.5 min-w-fit">
+                        {index + 1}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {suggestion}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          <div className="bg-success-light p-4 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium">Potential Savings</span>
+              <div className="p-4 rounded-lg bg-muted/30 border">
+                <h4 className="font-semibold mb-3">Tax Breakdown by Slab</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Up to ₹3,00,000</span>
+                    <span className="text-success">0%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>₹3,00,001 - ₹7,00,000</span>
+                    <span>5%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>₹7,00,001 - ₹10,00,000</span>
+                    <span>10%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>₹10,00,001 - ₹12,00,000</span>
+                    <span>15%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>₹12,00,001 - ₹15,00,000</span>
+                    <span>20%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Above ₹15,00,000</span>
+                    <span className="text-danger">30%</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p className="text-2xl font-bold text-success">
-              {formatCurrency(potentialSavings)}
-            </p>
-            <p className="text-xs text-muted-foreground">via 80C investments</p>
-          </div>
-        </div>
+          )}
 
-        <div className="space-y-3">
-          <h4 className="font-semibold">Tax Saving Suggestions:</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-success rounded-full mt-2"></div>
-              <span>Invest up to ₹1.5L in ELSS, PPF, or NSC under Section 80C</span>
+          {annualIncome === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Calculator className="h-16 w-16 mx-auto mb-4 opacity-30" />
+              <h3 className="text-lg font-medium mb-2">No Salary Data Found</h3>
+              <p className="mb-2">Add salary transactions to see tax calculations</p>
+              <p className="text-sm">Tag transactions with "salary" or "income" category</p>
             </div>
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-success rounded-full mt-2"></div>
-              <span>Health insurance premiums up to ₹25K under Section 80D</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-success rounded-full mt-2"></div>
-              <span>Home loan interest deduction under Section 24(b)</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <div className="w-2 h-2 bg-success rounded-full mt-2"></div>
-              <span>NPS contributions up to ₹50K under Section 80CCD(1B)</span>
-            </div>
-          </div>
-        </div>
-
-        {annualIncome === 0 && (
-          <div className="bg-muted/30 p-4 rounded-lg">
-            <p className="text-sm text-muted-foreground">
-              Add salary transactions to see accurate tax calculations
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
