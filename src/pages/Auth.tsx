@@ -95,8 +95,8 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
       <Card className="w-full max-w-md relative backdrop-blur-sm border-primary/20 shadow-2xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg"></div>
-        <CardHeader className="relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-lg -z-10"></div>
+        <CardHeader className="relative z-10">
           <div className="mx-auto mb-4 w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
             <span className="text-2xl font-bold text-primary-foreground">₹</span>
           </div>
@@ -107,7 +107,7 @@ const Auth = () => {
             Your intelligent financial companion
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative z-10">
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
