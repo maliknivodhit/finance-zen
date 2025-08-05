@@ -29,13 +29,47 @@ export const CryptoCurrencyTracker = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAsset, setNewAsset] = useState({ symbol: "", amount: "" });
 
-  // Mock data for demonstration (in real app, would fetch from APIs)
-  const mockCryptoData = {
-    bitcoin: { price: 98500, change: 3.2 },
-    ethereum: { price: 3650, change: 1.8 },
-    cardano: { price: 0.89, change: 4.1 },
-    polkadot: { price: 8.45, change: 2.7 },
-    solana: { price: 189, change: 6.3 }
+  // Fetch real crypto prices from CoinGecko API
+  const fetchCryptoData = async () => {
+    try {
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,solana&vs_currencies=usd&include_24hr_change=true'
+      );
+      const data = await response.json();
+      
+      return {
+        bitcoin: { 
+          price: Math.round(data.bitcoin?.usd * 83.25), // Convert to INR
+          change: parseFloat(data.bitcoin?.usd_24h_change?.toFixed(2) || '0')
+        },
+        ethereum: { 
+          price: Math.round(data.ethereum?.usd * 83.25), 
+          change: parseFloat(data.ethereum?.usd_24h_change?.toFixed(2) || '0')
+        },
+        cardano: { 
+          price: parseFloat((data.cardano?.usd * 83.25).toFixed(2)), 
+          change: parseFloat(data.cardano?.usd_24h_change?.toFixed(2) || '0')
+        },
+        polkadot: { 
+          price: parseFloat((data.polkadot?.usd * 83.25).toFixed(2)), 
+          change: parseFloat(data.polkadot?.usd_24h_change?.toFixed(2) || '0')
+        },
+        solana: { 
+          price: Math.round(data.solana?.usd * 83.25), 
+          change: parseFloat(data.solana?.usd_24h_change?.toFixed(2) || '0')
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching crypto data:', error);
+      // Fallback to mock data if API fails
+      return {
+        bitcoin: { price: 8150000, change: 2.5 },
+        ethereum: { price: 303750, change: 1.8 },
+        cardano: { price: 74.09, change: 4.1 },
+        polkadot: { price: 703.63, change: 2.7 },
+        solana: { price: 15743, change: 6.3 }
+      };
+    }
   };
 
   const mockCurrencyData = [
@@ -47,16 +81,17 @@ export const CryptoCurrencyTracker = () => {
   const fetchData = async () => {
     setLoading(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      // Update crypto prices
+    try {
+      const cryptoData = await fetchCryptoData();
+      
+      // Update crypto prices with real data
       const updatedAssets = cryptoAssets.map(asset => {
-        const mockData = mockCryptoData[asset.symbol.toLowerCase() as keyof typeof mockCryptoData];
-        if (mockData) {
+        const realData = cryptoData[asset.symbol.toLowerCase() as keyof typeof cryptoData];
+        if (realData) {
           return {
             ...asset,
-            currentPrice: mockData.price,
-            priceChange24h: mockData.change
+            currentPrice: realData.price,
+            priceChange24h: realData.change
           };
         }
         return asset;
@@ -64,28 +99,37 @@ export const CryptoCurrencyTracker = () => {
       
       setCryptoAssets(updatedAssets);
       setCurrencyRates(mockCurrencyData);
+    } catch (error) {
+      console.error('Error updating crypto data:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
-  const addCryptoAsset = () => {
+  const addCryptoAsset = async () => {
     if (!newAsset.symbol || !newAsset.amount) return;
 
-    const mockData = mockCryptoData[newAsset.symbol.toLowerCase() as keyof typeof mockCryptoData];
-    if (!mockData) return;
+    try {
+      const cryptoData = await fetchCryptoData();
+      const realData = cryptoData[newAsset.symbol.toLowerCase() as keyof typeof cryptoData];
+      
+      if (!realData) return;
 
-    const asset: CryptoAsset = {
-      id: Date.now().toString(),
-      symbol: newAsset.symbol.toUpperCase(),
-      name: newAsset.symbol.charAt(0).toUpperCase() + newAsset.symbol.slice(1),
-      amount: Number(newAsset.amount),
-      currentPrice: mockData.price,
-      priceChange24h: mockData.change
-    };
+      const asset: CryptoAsset = {
+        id: Date.now().toString(),
+        symbol: newAsset.symbol.toUpperCase(),
+        name: newAsset.symbol.charAt(0).toUpperCase() + newAsset.symbol.slice(1),
+        amount: Number(newAsset.amount),
+        currentPrice: realData.price,
+        priceChange24h: realData.change
+      };
 
-    setCryptoAssets(prev => [...prev, asset]);
-    setNewAsset({ symbol: "", amount: "" });
-    setShowAddForm(false);
+      setCryptoAssets(prev => [...prev, asset]);
+      setNewAsset({ symbol: "", amount: "" });
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Error adding crypto asset:', error);
+    }
   };
 
   const removeCryptoAsset = (id: string) => {
