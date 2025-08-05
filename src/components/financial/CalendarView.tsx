@@ -137,7 +137,7 @@ export const CalendarView = ({ transactions }: CalendarViewProps) => {
           {/* Calendar days */}
           {calendarDays.map((day, index) => {
             if (!day) {
-              return <div key={index} className="p-2 h-16"></div>;
+              return <div key={`empty-${index}`} className="p-2 h-16"></div>;
             }
 
             const dayData = getDayData(day);
@@ -147,7 +147,7 @@ export const CalendarView = ({ transactions }: CalendarViewProps) => {
 
             return (
               <div
-                key={day}
+                key={`day-${day}-${currentMonth}-${currentYear}`}
                 className={`p-1 h-16 border border-border/30 rounded-lg cursor-pointer transition-smooth hover:bg-muted/30 ${
                   getDayColor(dayData)
                 } ${isSelected ? 'ring-2 ring-primary' : ''} ${isToday ? 'border-primary' : ''}`}
@@ -239,7 +239,7 @@ export const CalendarView = ({ transactions }: CalendarViewProps) => {
               <h5 className="font-medium">Transactions:</h5>
               {selectedDateData.transactions.map((transaction, index) => (
                 <div 
-                  key={index}
+                  key={`transaction-${selectedDate}-${index}-${transaction.amount}-${transaction.category}`}
                   className="flex items-center justify-between p-2 bg-background/50 rounded"
                 >
                   <div>

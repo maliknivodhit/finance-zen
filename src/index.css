@@ -104,6 +104,21 @@
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
 
+    /* Success: Brighter green for dark mode */
+    --success: 158 64% 55%;
+    --success-foreground: 210 40% 98%;
+    --success-light: 158 64% 15%;
+
+    /* Warning: Brighter amber for dark mode */
+    --warning: 43 96% 60%;
+    --warning-foreground: 222.2 84% 4.9%;
+    --warning-light: 43 96% 15%;
+
+    /* Danger: Brighter red for dark mode */
+    --danger: 0 84% 65%;
+    --danger-foreground: 210 40% 98%;
+    --danger-light: 0 84% 15%;
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
@@ -141,8 +156,13 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 transition-all duration-300;
     box-shadow: var(--shadow-soft);
+  }
+
+  .glass-card:hover {
+    @apply bg-card/90;
+    box-shadow: var(--shadow-medium);
   }
 
   .gradient-primary {
@@ -162,7 +182,21 @@
   }
 
   .bg-grid-pattern {
-    background-image: radial-gradient(circle, hsl(var(--primary) / 0.1) 1px, transparent 1px);
+    background-image: radial-gradient(circle at 1px 1px, hsl(var(--muted-foreground) / 0.5) 1px, transparent 0);
     background-size: 20px 20px;
+  }
+
+  /* Dark mode improvements */
+  .dark .glass-card {
+    @apply bg-card/70 border-border/30;
+  }
+
+  .dark .glass-card:hover {
+    @apply bg-card/80;
+  }
+
+  /* Smooth transitions for all elements */
+  * {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   }
 }

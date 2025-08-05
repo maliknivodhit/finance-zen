@@ -31,11 +31,11 @@ export const CryptoCurrencyTracker = () => {
 
   // Mock data for demonstration (in real app, would fetch from APIs)
   const mockCryptoData = {
-    bitcoin: { price: 67500, change: 2.5 },
-    ethereum: { price: 3800, change: -1.2 },
-    cardano: { price: 0.45, change: 5.8 },
-    polkadot: { price: 7.2, change: 3.1 },
-    solana: { price: 145, change: -0.8 }
+    bitcoin: { price: 98500, change: 3.2 },
+    ethereum: { price: 3650, change: 1.8 },
+    cardano: { price: 0.89, change: 4.1 },
+    polkadot: { price: 8.45, change: 2.7 },
+    solana: { price: 189, change: 6.3 }
   };
 
   const mockCurrencyData = [

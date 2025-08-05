@@ -7,6 +7,7 @@ import { PieChart, TrendingUp, Calculator } from "lucide-react";
 import { formatCurrency } from "../dashboard/StatCard";
 import { 
   PieChart as RechartsPieChart, 
+  Pie,
   Cell, 
   ResponsiveContainer, 
   Tooltip, 
@@ -164,11 +165,22 @@ export const SIPCalculator = () => {
           <ResponsiveContainer width="100%" height="100%">
             {viewType === 'pie' ? (
               <RechartsPieChart>
+                <Pie 
+                  data={pieData}
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={60} 
+                  outerRadius={120} 
+                  paddingAngle={5}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                <RechartsPieChart>
-                  <Cell key="investment" fill={COLORS[0]} />
-                  <Cell key="returns" fill={COLORS[1]} />
-                </RechartsPieChart>
               </RechartsPieChart>
             ) : (
               <LineChart data={calculatedData.yearlyData}>
