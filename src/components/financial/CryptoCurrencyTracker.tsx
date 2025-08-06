@@ -35,23 +35,38 @@ export const CryptoCurrencyTracker = () => {
 
   // Load crypto assets from localStorage on component mount
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       const savedAssets = localStorage.getItem(`crypto_assets_${user.id}`);
       if (savedAssets) {
-        const assets = JSON.parse(savedAssets);
-        setCryptoAssets(assets);
-        // Update prices for saved assets
-        updateAssetPrices(assets);
+        try {
+          const assets = JSON.parse(savedAssets);
+          setCryptoAssets(assets);
+          // Update prices for saved assets immediately
+          updateAssetPrices(assets);
+        } catch (error) {
+          console.error('Error loading saved assets:', error);
+        }
       }
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Save crypto assets to localStorage whenever they change
   useEffect(() => {
-    if (user && cryptoAssets.length > 0) {
-      localStorage.setItem(`crypto_assets_${user.id}`, JSON.stringify(cryptoAssets));
+    if (user?.id && cryptoAssets.length >= 0) {
+      if (cryptoAssets.length === 0) {
+        localStorage.removeItem(`crypto_assets_${user.id}`);
+      } else {
+        localStorage.setItem(`crypto_assets_${user.id}`, JSON.stringify(cryptoAssets));
+      }
     }
-  }, [cryptoAssets, user]);
+  }, [cryptoAssets, user?.id]);
+
+  // Clear assets when user logs out
+  useEffect(() => {
+    if (!user?.id) {
+      setCryptoAssets([]);
+    }
+  }, [user?.id]);
 
   // Fetch live crypto prices from CoinGecko API
   const fetchCryptoData = async () => {
