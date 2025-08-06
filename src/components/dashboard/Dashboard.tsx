@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { StatCard } from "./StatCard";
+import { StatCard, formatCurrency } from "./StatCard";
 import { FinancialChart } from "./FinancialChart";
 import { ExpenseChart } from "./ExpenseChart";
 import { TransactionForm } from "./TransactionForm";
@@ -48,6 +48,8 @@ export const Dashboard = () => {
   const { user, signOut } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [showBudgetGoals, setShowBudgetGoals] = useState(false);
 
   // Fetch transactions
   const { data: transactionsData, refetch: refetchTransactions } = useQuery({
@@ -122,6 +124,44 @@ export const Dashboard = () => {
   const monthlyChange = transactions.length > 0 ? 
     ((totalIncome - totalExpenses) / Math.max(totalIncome, 1)) * 100 : 0;
 
+  // Process data for charts
+  const chartData = transactions.length > 0 ? [
+    {
+      month: "Current",
+      income: totalIncome,
+      expenses: totalExpenses,
+      savings: balance > 0 ? balance : 0
+    }
+  ] : [];
+
+  const COLORS = [
+    "#8B5CF6", "#A855F7", "#C084FC", "#D8B4FE", "#E9D5FF", 
+    "#F3E8FF", "#7C3AED", "#9333EA", "#A855F7", "#B45ECC"
+  ];
+
+  const expenseData = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((acc, transaction, index) => {
+      const existing = acc.find(item => item.category === transaction.category);
+      if (existing) {
+        existing.amount += transaction.amount;
+      } else {
+        acc.push({
+          category: transaction.category,
+          amount: transaction.amount,
+          color: COLORS[acc.length % COLORS.length]
+        });
+      }
+      return acc;
+    }, [] as { category: string; amount: number; color: string }[]);
+
+  // Sample budget goals for SmartAlerts
+  const budgetGoals = [
+    { category: "Food & Dining", amount: 15000 },
+    { category: "Transportation", amount: 8000 },
+    { category: "Entertainment", amount: 5000 }
+  ];
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -191,35 +231,67 @@ export const Dashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <StatCard 
                 title="Total Balance" 
-                amount={balance} 
-                change={monthlyChange}
-                icon={<DollarSign className="h-6 w-6" />}
+                value={formatCurrency(balance)} 
+                icon={DollarSign}
+                trend={{
+                  value: Math.abs(monthlyChange),
+                  isPositive: monthlyChange >= 0
+                }}
+                variant={balance >= 0 ? "success" : "danger"}
               />
               <StatCard 
                 title="Total Income" 
-                amount={totalIncome} 
-                change={15.2}
-                icon={<TrendingUp className="h-6 w-6 text-success" />}
+                value={formatCurrency(totalIncome)} 
+                icon={TrendingUp}
+                trend={{
+                  value: 15.2,
+                  isPositive: true
+                }}
+                variant="success"
               />
               <StatCard 
                 title="Total Expenses" 
-                amount={totalExpenses} 
-                change={-8.1}
-                icon={<TrendingDown className="h-6 w-6 text-danger" />}
+                value={formatCurrency(totalExpenses)} 
+                icon={TrendingDown}
+                trend={{
+                  value: 8.1,
+                  isPositive: false
+                }}
+                variant="danger"
               />
             </div>
 
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <FinancialChart transactions={transactions} />
-              <ExpenseChart transactions={transactions} />
+              <FinancialChart data={chartData} />
+              <ExpenseChart data={expenseData} />
             </div>
 
             {/* Transaction Form and Budget Goals */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <TransactionForm onAddTransaction={handleAddTransaction} />
-              <BudgetGoals />
+              <div className="space-y-4">
+                <Button 
+                  onClick={() => setShowBudgetGoals(true)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <PieChart className="h-4 w-4 mr-2" />
+                  Manage Budget Goals
+                </Button>
+              </div>
             </div>
+
+            <TransactionForm 
+              onAddTransaction={handleAddTransaction}
+              isOpen={showTransactionForm}
+              onToggle={() => setShowTransactionForm(!showTransactionForm)}
+            />
+
+            <BudgetGoals 
+              isOpen={showBudgetGoals}
+              onToggle={() => setShowBudgetGoals(!showBudgetGoals)}
+              expenses={expenseData}
+            />
 
             {/* Recent Transactions */}
             {transactions.length > 0 && (
@@ -256,7 +328,7 @@ export const Dashboard = () => {
                         </div>
                         <div className="text-right">
                           <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
-                            {transaction.type === 'income' ? '+' : '-'}₹{Math.abs(transaction.amount).toLocaleString()}
+                            {transaction.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(transaction.amount))}
                           </Badge>
                         </div>
                       </div>
@@ -288,15 +360,15 @@ export const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="alerts">
-            <SmartAlerts transactions={transactions} />
+            <SmartAlerts transactions={transactions} budgetGoals={budgetGoals} />
           </TabsContent>
 
           <TabsContent value="growth">
-            <SavingsGrowthCalculator />
+            <SavingsGrowthCalculator currentSavings={balance > 0 ? balance : 0} />
           </TabsContent>
 
           <TabsContent value="tax">
-            <TaxCalculator />
+            <TaxCalculator transactions={transactions} />
           </TabsContent>
         </Tabs>
       </div>
