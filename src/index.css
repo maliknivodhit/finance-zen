@@ -1,144 +1,85 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Finance Tracker Design System - Professional, Trustworthy, Modern */
+/* Finance Tracker Design System - Modern Purple/Violet Theme */
 
 @layer base {
   :root {
-    /* Core Brand Colors - Deep finance blues with trustworthy greens */
-    --background: 220 27% 98%;
-    --foreground: 215 28% 17%;
+    /* Core Brand Colors - Modern purple/violet theme */
+    --background: 250 100% 99%;
+    --foreground: 250 50% 10%;
 
     /* Card system with subtle depth */
-    --card: 0 0% 100%;
-    --card-foreground: 215 28% 17%;
+    --card: 255 100% 100%;
+    --card-foreground: 250 50% 10%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 28% 17%;
+    --popover: 255 100% 100%;
+    --popover-foreground: 250 50% 10%;
 
-    /* Primary: Deep finance blue */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --primary-hover: 217 91% 55%;
+    /* Primary: Modern violet */
+    --primary: 262 83% 58%;
+    --primary-foreground: 255 100% 100%;
+    --primary-hover: 262 83% 53%;
 
-    /* Secondary: Soft mint green for success */
-    --secondary: 158 64% 96%;
-    --secondary-foreground: 158 64% 20%;
+    /* Secondary: Soft lavender */
+    --secondary: 270 60% 96%;
+    --secondary-foreground: 270 60% 20%;
 
     /* Success: Emerald for positive finances */
     --success: 158 64% 52%;
-    --success-foreground: 0 0% 100%;
+    --success-foreground: 255 100% 100%;
     --success-light: 158 64% 96%;
 
     /* Warning: Amber for alerts */
     --warning: 43 96% 56%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 255 100% 100%;
     --warning-light: 43 96% 96%;
 
     /* Danger: Red for debt/negative */
     --danger: 0 84% 60%;
-    --danger-foreground: 0 0% 100%;
+    --danger-foreground: 255 100% 100%;
     --danger-light: 0 84% 96%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 8.9% 46.1%;
+    --muted: 250 20% 96%;
+    --muted-foreground: 250 10% 46%;
 
-    --accent: 158 64% 96%;
-    --accent-foreground: 158 64% 20%;
+    --accent: 270 60% 96%;
+    --accent-foreground: 270 60% 20%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive-foreground: 255 100% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 250 20% 91%;
+    --input: 250 20% 91%;
+    --ring: 262 83% 58%;
 
     --radius: 0.75rem;
 
     /* Finance-specific gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(158 64% 52%));
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(280 70% 65%));
     --gradient-success: linear-gradient(135deg, hsl(158 64% 52%), hsl(158 64% 45%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 27% 98%));
-    --gradient-background: linear-gradient(180deg, hsl(220 27% 98%), hsl(220 14% 96%));
+    --gradient-card: linear-gradient(145deg, hsl(255 100% 100%), hsl(250 100% 99%));
+    --gradient-background: linear-gradient(180deg, hsl(250 100% 99%), hsl(250 20% 96%));
 
     /* Shadows for depth */
-    --shadow-soft: 0 2px 8px -2px hsl(220 13% 91% / 0.3);
-    --shadow-medium: 0 8px 24px -4px hsl(220 13% 91% / 0.4);
-    --shadow-strong: 0 16px 40px -8px hsl(220 13% 91% / 0.5);
+    --shadow-soft: 0 2px 8px -2px hsl(262 83% 58% / 0.1);
+    --shadow-medium: 0 8px 24px -4px hsl(262 83% 58% / 0.15);
+    --shadow-strong: 0 16px 40px -8px hsl(262 83% 58% / 0.2);
 
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-.dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    /* Success: Brighter green for dark mode */
-    --success: 158 64% 55%;
-    --success-foreground: 210 40% 98%;
-    --success-light: 158 64% 15%;
-
-    /* Warning: Brighter amber for dark mode */
-    --warning: 43 96% 60%;
-    --warning-foreground: 222.2 84% 4.9%;
-    --warning-light: 43 96% 15%;
-
-    /* Danger: Brighter red for dark mode */
-    --danger: 0 84% 65%;
-    --danger-foreground: 210 40% 98%;
-    --danger-light: 0 84% 15%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 250 100% 99%;
+    --sidebar-foreground: 250 50% 26%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 255 100% 100%;
+    --sidebar-accent: 270 60% 96%;
+    --sidebar-accent-foreground: 270 60% 20%;
+    --sidebar-border: 250 20% 91%;
+    --sidebar-ring: 262 83% 58%;
   }
 }
 
@@ -186,17 +127,32 @@
     background-size: 20px 20px;
   }
 
-  /* Dark mode improvements */
-  .dark .glass-card {
-    @apply bg-card/70 border-border/30;
-  }
-
-  .dark .glass-card:hover {
-    @apply bg-card/80;
-  }
-
   /* Smooth transitions for all elements */
   * {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Login page animations */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(262 83% 58% / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(262 83% 58% / 0.6); }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-delay {
+    animation: float 6s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
   }
 }
