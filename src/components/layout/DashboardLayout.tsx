@@ -19,10 +19,8 @@ export function DashboardLayout({ children, activeSection, onSectionChange }: Da
           {/* Top Header */}
           <header className="h-16 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-50">
             <div className="h-full px-6 flex items-center gap-4">
-              <SidebarTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <Menu className="h-5 w-5" />
-                </Button>
+              <SidebarTrigger className="text-muted-foreground hover:text-foreground">
+                <Menu className="h-5 w-5" />
               </SidebarTrigger>
               
               <div className="flex-1">
