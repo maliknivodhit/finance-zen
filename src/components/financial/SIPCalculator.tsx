@@ -1,10 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { PieChart, TrendingUp, Calculator } from "lucide-react";
+import { PieChart, TrendingUp, Calculator, Save, Trash2 } from "lucide-react";
 import { formatCurrency } from "../dashboard/StatCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
   PieChart as RechartsPieChart, 
   Pie,
@@ -25,6 +27,73 @@ export const SIPCalculator = () => {
   const [expectedReturn, setExpectedReturn] = useState(12);
   const [tenure, setTenure] = useState(15);
   const [viewType, setViewType] = useState<'pie' | 'line'>('pie');
+  const [savedSIPs, setSavedSIPs] = useState<any[]>([]);
+  const { toast } = useToast();
+
+  const loadSavedSIPs = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('sip_investments')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setSavedSIPs(data || []);
+    } catch (error) {
+      console.error('Error loading SIPs:', error);
+    }
+  };
+
+  const saveSIP = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Error", description: "Please log in to save SIP plans" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('sip_investments')
+        .insert({
+          user_id: user.id,
+          monthly_amount: monthlyInvestment,
+          expected_return: expectedReturn,
+          tenure_years: tenure
+        });
+
+      if (error) throw error;
+
+      await loadSavedSIPs();
+      toast({ title: "Success", description: "SIP plan saved successfully" });
+    } catch (error) {
+      console.error('Error saving SIP:', error);
+      toast({ title: "Error", description: "Failed to save SIP plan" });
+    }
+  };
+
+  const deleteSIP = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('sip_investments')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await loadSavedSIPs();
+      toast({ title: "Success", description: "SIP plan deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting SIP:', error);
+      toast({ title: "Error", description: "Failed to delete SIP plan" });
+    }
+  };
+
+  useEffect(() => {
+    loadSavedSIPs();
+  }, []);
 
   const calculatedData = useMemo(() => {
     const monthlyReturn = expectedReturn / 12 / 100;
@@ -110,6 +179,13 @@ export const SIPCalculator = () => {
               max="50"
             />
           </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={saveSIP} className="flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            Save SIP Plan
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -214,7 +290,45 @@ export const SIPCalculator = () => {
           <p>• Monthly SIP: {formatCurrency(monthlyInvestment)}</p>
           <p>• Wealth gain: {formatCurrency(calculatedData.totalReturns)} ({((calculatedData.totalReturns / calculatedData.totalInvestment) * 100).toFixed(1)}%)</p>
           <p>• Effective annual return: {((Math.pow(calculatedData.futureValue / calculatedData.totalInvestment, 1/tenure) - 1) * 100).toFixed(1)}%</p>
+          <p>• Tax on long-term gains (&gt;1 year): 12.5% on gains above ₹1 lakh</p>
         </div>
+
+        {savedSIPs.length > 0 && (
+          <div>
+            <h4 className="font-semibold mb-4">Your Saved SIP Plans</h4>
+            <div className="space-y-3">
+              {savedSIPs.map((sip) => {
+                const months = sip.tenure_years * 12;
+                const monthlyRate = sip.expected_return / 100 / 12;
+                const futureValue = sip.monthly_amount * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate);
+                const totalInvestment = sip.monthly_amount * months;
+                const returns = futureValue - totalInvestment;
+                
+                return (
+                  <div key={sip.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div>
+                      <p className="font-medium">₹{sip.monthly_amount}/month for {sip.tenure_years} years</p>
+                      <p className="text-sm text-muted-foreground">
+                        Expected: {formatCurrency(futureValue)} ({sip.expected_return}% return)
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Gains: {formatCurrency(returns)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteSIP(sip.id)}
+                      className="h-8 w-8 p-0 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Calculator, TrendingUp, PiggyBank, IndianRupee } from 'lucide-react';
+import { Calculator, TrendingUp, PiggyBank, IndianRupee, Coins, BarChart3 } from 'lucide-react';
+import { formatCurrency } from '../dashboard/StatCard';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Transaction {
   id: string;
@@ -21,6 +23,9 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
   const [annualIncome, setAnnualIncome] = useState(0);
   const [taxLiability, setTaxLiability] = useState(0);
   const [taxSavingSuggestions, setTaxSavingSuggestions] = useState<string[]>([]);
+  const [cryptoGains, setCryptoGains] = useState(0);
+  const [sipGains, setSipGains] = useState(0);
+  const [savingsInterest, setSavingsInterest] = useState(0);
 
   // Indian tax slabs for 2024-25 (New Tax Regime)
   const calculateTax = (income: number) => {
@@ -43,6 +48,23 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
     return tax;
   };
 
+  const calculateCryptoTax = (gains: number) => {
+    return gains * 0.30; // 30% flat tax on crypto gains
+  };
+
+  const calculateSIPTax = (gains: number) => {
+    // Long-term capital gains tax on equity funds (12.5% on gains above ₹1 lakh)
+    if (gains > 100000) {
+      return (gains - 100000) * 0.125;
+    }
+    return 0;
+  };
+
+  const calculateSavingsTax = (interest: number, income: number) => {
+    // Interest income is taxed as per income tax slab
+    return calculateTax(income + interest) - calculateTax(income);
+  };
+
   const getTaxSavingSuggestions = (income: number) => {
     const suggestions = [];
     
@@ -61,11 +83,74 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
       suggestions.push("Explore tax-saving fixed deposits");
     }
 
+    if (cryptoGains > 0) {
+      suggestions.push("Consider timing crypto sales to optimize tax liability");
+      suggestions.push("Explore crypto staking rewards vs trading gains tax implications");
+    }
+
+    if (sipGains > 100000) {
+      suggestions.push("SIP gains above ₹1 lakh are taxed at 12.5% - consider staggered redemptions");
+    }
+
     return suggestions;
   };
 
+  const loadInvestmentData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Load crypto holdings and calculate gains
+      const { data: cryptoData } = await supabase
+        .from('crypto_holdings')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (cryptoData) {
+        const totalCryptoGains = cryptoData.reduce((total, holding) => {
+          const gain = (Number(holding.current_price) - Number(holding.purchase_price)) * Number(holding.amount);
+          return total + gain;
+        }, 0);
+        setCryptoGains(Math.max(0, totalCryptoGains)); // Only positive gains are taxable
+      }
+
+      // Load SIP investments and calculate potential gains
+      const { data: sipData } = await supabase
+        .from('sip_investments')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (sipData) {
+        const totalSipGains = sipData.reduce((total, sip) => {
+          const months = Number(sip.tenure_years) * 12;
+          const monthlyRate = Number(sip.expected_return) / 100 / 12;
+          const futureValue = Number(sip.monthly_amount) * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate) * (1 + monthlyRate);
+          const totalInvestment = Number(sip.monthly_amount) * months;
+          return total + (futureValue - totalInvestment);
+        }, 0);
+        setSipGains(totalSipGains);
+      }
+
+      // Load savings accounts and calculate interest
+      const { data: savingsData } = await supabase
+        .from('savings_accounts')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (savingsData) {
+        const totalInterest = savingsData.reduce((total, account) => {
+          const annualInterest = Number(account.current_balance) * (Number(account.interest_rate) / 100);
+          return total + annualInterest;
+        }, 0);
+        setSavingsInterest(totalInterest);
+      }
+    } catch (error) {
+      console.error('Error loading investment data:', error);
+    }
+  };
+
   useEffect(() => {
-    // Detect salary transactions (assuming salary is regular monthly income)
+    // Detect salary transactions
     const salaryTransactions = transactions.filter(
       t => t.type === 'income' && 
       (t.category.toLowerCase().includes('salary') || 
@@ -74,19 +159,28 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
     );
 
     if (salaryTransactions.length > 0) {
-      // Calculate average monthly salary and project annually
       const totalSalary = salaryTransactions.reduce((sum, t) => sum + t.amount, 0);
       const avgMonthlySalary = totalSalary / salaryTransactions.length;
       const projectedAnnual = avgMonthlySalary * 12;
       
       setAnnualIncome(projectedAnnual);
       setTaxLiability(calculateTax(projectedAnnual));
-      setTaxSavingSuggestions(getTaxSavingSuggestions(projectedAnnual));
     }
+
+    loadInvestmentData();
   }, [transactions]);
 
-  const taxRate = annualIncome > 0 ? (taxLiability / annualIncome) * 100 : 0;
-  const netIncome = annualIncome - taxLiability;
+  useEffect(() => {
+    setTaxSavingSuggestions(getTaxSavingSuggestions(annualIncome));
+  }, [annualIncome, cryptoGains, sipGains]);
+
+  const totalTaxLiability = taxLiability + 
+    calculateCryptoTax(cryptoGains) + 
+    calculateSIPTax(sipGains) + 
+    calculateSavingsTax(savingsInterest, annualIncome);
+
+  const taxRate = annualIncome > 0 ? (totalTaxLiability / annualIncome) * 100 : 0;
+  const netIncome = annualIncome - totalTaxLiability;
 
   return (
     <div className="space-y-6">
@@ -94,10 +188,10 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-primary">
             <Calculator className="h-5 w-5" />
-            Tax Calculator & Income Estimator
+            Tax Calculator & Profit Analysis
           </CardTitle>
           <CardDescription>
-            Auto-calculated based on your salary transactions
+            Comprehensive tax calculation including all investment gains
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -115,10 +209,10 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
             <div className="p-4 rounded-lg bg-gradient-to-br from-danger/10 to-danger/5 border border-danger/20">
               <div className="flex items-center gap-2 mb-2">
                 <Calculator className="h-4 w-4 text-danger" />
-                <span className="text-sm font-medium">Tax Liability</span>
+                <span className="text-sm font-medium">Total Tax Liability</span>
               </div>
               <div className="text-2xl font-bold text-danger">
-                ₹{taxLiability.toLocaleString('en-IN')}
+                ₹{totalTaxLiability.toLocaleString('en-IN')}
               </div>
             </div>
             
@@ -143,12 +237,54 @@ export const TaxCalculator = ({ transactions }: TaxCalculatorProps) => {
             </div>
           </div>
 
+          {/* Tax Breakdown by Asset Class */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg bg-muted/30 border">
+              <div className="flex items-center gap-2 mb-2">
+                <Coins className="h-4 w-4 text-warning" />
+                <span className="text-sm font-medium">Crypto Tax</span>
+              </div>
+              <div className="text-lg font-bold text-warning">
+                ₹{calculateCryptoTax(cryptoGains).toLocaleString('en-IN')}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                30% on gains: ₹{cryptoGains.toLocaleString('en-IN')}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/30 border">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="h-4 w-4 text-success" />
+                <span className="text-sm font-medium">SIP Tax</span>
+              </div>
+              <div className="text-lg font-bold text-success">
+                ₹{calculateSIPTax(sipGains).toLocaleString('en-IN')}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                12.5% on gains above ₹1L: ₹{sipGains.toLocaleString('en-IN')}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/30 border">
+              <div className="flex items-center gap-2 mb-2">
+                <PiggyBank className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Savings Tax</span>
+              </div>
+              <div className="text-lg font-bold text-primary">
+                ₹{calculateSavingsTax(savingsInterest, annualIncome).toLocaleString('en-IN')}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                As per slab on interest: ₹{savingsInterest.toLocaleString('en-IN')}
+              </p>
+            </div>
+          </div>
+
           {annualIncome > 0 && (
             <div className="space-y-4">
               <div className="p-4 rounded-lg bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
                 <h4 className="font-semibold flex items-center gap-2 mb-4 text-success">
                   <PiggyBank className="h-4 w-4" />
-                  Tax Saving Suggestions
+                  Tax Saving & Optimization Suggestions
                 </h4>
                 <div className="grid gap-3">
                   {taxSavingSuggestions.map((suggestion, index) => (

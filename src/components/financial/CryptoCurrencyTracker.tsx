@@ -6,14 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, DollarSign, Coins, Plus, RefreshCw } from "lucide-react";
 import { formatCurrency } from "../dashboard/StatCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface CryptoAsset {
   id: string;
   symbol: string;
   name: string;
   amount: number;
+  purchase_price: number;
   currentPrice: number;
   priceChange24h: number;
+  purchase_date: string;
 }
 
 interface CurrencyRate {
@@ -27,7 +31,8 @@ export const CryptoCurrencyTracker = () => {
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newAsset, setNewAsset] = useState({ symbol: "", amount: "" });
+  const [newAsset, setNewAsset] = useState({ symbol: "", amount: "", purchasePrice: "" });
+  const { toast } = useToast();
 
   // Fetch real crypto prices from CoinGecko API
   const fetchCryptoData = async () => {
@@ -106,38 +111,100 @@ export const CryptoCurrencyTracker = () => {
     }
   };
 
-  const addCryptoAsset = async () => {
-    if (!newAsset.symbol || !newAsset.amount) return;
-
+  const loadCryptoAssets = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('crypto_holdings')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
       const cryptoData = await fetchCryptoData();
-      const realData = cryptoData[newAsset.symbol.toLowerCase() as keyof typeof cryptoData];
-      
-      if (!realData) return;
+      const assetsWithCurrentPrices = data.map(asset => {
+        const realData = cryptoData[asset.symbol.toLowerCase() as keyof typeof cryptoData];
+        return {
+          id: asset.id,
+          symbol: asset.symbol,
+          name: asset.name,
+          amount: Number(asset.amount),
+          purchase_price: Number(asset.purchase_price),
+          currentPrice: realData?.price || Number(asset.current_price),
+          priceChange24h: realData?.change || 0,
+          purchase_date: asset.purchase_date
+        };
+      });
 
-      const asset: CryptoAsset = {
-        id: Date.now().toString(),
-        symbol: newAsset.symbol.toUpperCase(),
-        name: newAsset.symbol.charAt(0).toUpperCase() + newAsset.symbol.slice(1),
-        amount: Number(newAsset.amount),
-        currentPrice: realData.price,
-        priceChange24h: realData.change
-      };
-
-      setCryptoAssets(prev => [...prev, asset]);
-      setNewAsset({ symbol: "", amount: "" });
-      setShowAddForm(false);
+      setCryptoAssets(assetsWithCurrentPrices);
     } catch (error) {
-      console.error('Error adding crypto asset:', error);
+      console.error('Error loading crypto assets:', error);
     }
   };
 
-  const removeCryptoAsset = (id: string) => {
-    setCryptoAssets(prev => prev.filter(asset => asset.id !== id));
+  const addCryptoAsset = async () => {
+    if (!newAsset.symbol || !newAsset.amount || !newAsset.purchasePrice) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Error", description: "Please log in to add crypto assets" });
+        return;
+      }
+
+      const cryptoData = await fetchCryptoData();
+      const realData = cryptoData[newAsset.symbol.toLowerCase() as keyof typeof cryptoData];
+      
+      if (!realData) {
+        toast({ title: "Error", description: "Cryptocurrency not supported" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('crypto_holdings')
+        .insert({
+          user_id: user.id,
+          symbol: newAsset.symbol.toUpperCase(),
+          name: newAsset.symbol.charAt(0).toUpperCase() + newAsset.symbol.slice(1),
+          amount: Number(newAsset.amount),
+          purchase_price: Number(newAsset.purchasePrice),
+          current_price: realData.price
+        });
+
+      if (error) throw error;
+
+      await loadCryptoAssets();
+      setNewAsset({ symbol: "", amount: "", purchasePrice: "" });
+      setShowAddForm(false);
+      toast({ title: "Success", description: "Crypto asset added successfully" });
+    } catch (error) {
+      console.error('Error adding crypto asset:', error);
+      toast({ title: "Error", description: "Failed to add crypto asset" });
+    }
+  };
+
+  const removeCryptoAsset = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('crypto_holdings')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await loadCryptoAssets();
+      toast({ title: "Success", description: "Crypto asset removed successfully" });
+    } catch (error) {
+      console.error('Error removing crypto asset:', error);
+      toast({ title: "Error", description: "Failed to remove crypto asset" });
+    }
   };
 
   useEffect(() => {
-    fetchData();
+    loadCryptoAssets();
+    setCurrencyRates(mockCurrencyData);
   }, []);
 
   const totalPortfolioValue = cryptoAssets.reduce(
@@ -241,6 +308,17 @@ export const CryptoCurrencyTracker = () => {
                   />
                 </div>
               </div>
+              <div>
+                <Label htmlFor="purchase-price">Purchase Price (₹)</Label>
+                <Input
+                  id="purchase-price"
+                  type="number"
+                  step="0.01"
+                  value={newAsset.purchasePrice}
+                  onChange={(e) => setNewAsset(prev => ({ ...prev, purchasePrice: e.target.value }))}
+                  placeholder="Purchase price per coin"
+                />
+              </div>
               <div className="flex gap-2">
                 <Button onClick={addCryptoAsset} size="sm">Add Asset</Button>
                 <Button 
@@ -272,14 +350,26 @@ export const CryptoCurrencyTracker = () => {
                         <p className="text-sm text-muted-foreground">
                           {asset.amount} {asset.symbol} • {formatCurrency(asset.currentPrice)}/coin
                         </p>
+                        <p className="text-xs text-muted-foreground">
+                          Bought at: {formatCurrency(asset.purchase_price)}/coin
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">{formatCurrency(value)}</p>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col items-end gap-1">
                         <Badge variant={asset.priceChange24h >= 0 ? "default" : "destructive"}>
                           {asset.priceChange24h >= 0 ? '+' : ''}{asset.priceChange24h.toFixed(2)}%
                         </Badge>
+                        {(() => {
+                          const profit = (asset.currentPrice - asset.purchase_price) * asset.amount;
+                          const profitPercent = ((asset.currentPrice - asset.purchase_price) / asset.purchase_price) * 100;
+                          return (
+                            <p className={`text-xs ${profit >= 0 ? 'text-success' : 'text-danger'}`}>
+                              P&L: {profit >= 0 ? '+' : ''}{formatCurrency(profit)} ({profitPercent >= 0 ? '+' : ''}{profitPercent.toFixed(1)}%)
+                            </p>
+                          );
+                        })()}
                         <Button
                           variant="ghost"
                           size="sm"

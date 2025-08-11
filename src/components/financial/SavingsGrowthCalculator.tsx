@@ -1,19 +1,97 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TrendingUp, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, DollarSign, Save, Trash2 } from "lucide-react";
 import { formatCurrency } from "../dashboard/StatCard";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SavingsGrowthCalculatorProps {
   currentSavings: number;
 }
 
 export const SavingsGrowthCalculator = ({ currentSavings }: SavingsGrowthCalculatorProps) => {
-  const [interestRate, setInterestRate] = useState(8); // Default 8% annual return
+  const [interestRate, setInterestRate] = useState(8);
   const [years, setYears] = useState(10);
   const [monthlyContribution, setMonthlyContribution] = useState(5000);
+  const [accountName, setAccountName] = useState("");
+  const [savedAccounts, setSavedAccounts] = useState<any[]>([]);
+  const { toast } = useToast();
+
+  const loadSavedAccounts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('savings_accounts')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setSavedAccounts(data || []);
+    } catch (error) {
+      console.error('Error loading savings accounts:', error);
+    }
+  };
+
+  const saveAccount = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: "Error", description: "Please log in to save savings accounts" });
+        return;
+      }
+
+      if (!accountName.trim()) {
+        toast({ title: "Error", description: "Please enter an account name" });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('savings_accounts')
+        .insert({
+          user_id: user.id,
+          account_name: accountName,
+          current_balance: currentSavings,
+          interest_rate: interestRate,
+          monthly_contribution: monthlyContribution
+        });
+
+      if (error) throw error;
+
+      await loadSavedAccounts();
+      setAccountName("");
+      toast({ title: "Success", description: "Savings account saved successfully" });
+    } catch (error) {
+      console.error('Error saving account:', error);
+      toast({ title: "Error", description: "Failed to save savings account" });
+    }
+  };
+
+  const deleteAccount = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('savings_accounts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await loadSavedAccounts();
+      toast({ title: "Success", description: "Savings account deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      toast({ title: "Error", description: "Failed to delete savings account" });
+    }
+  };
+
+  useEffect(() => {
+    loadSavedAccounts();
+  }, []);
 
   const growthData = useMemo(() => {
     const data = [];
@@ -84,6 +162,25 @@ export const SavingsGrowthCalculator = ({ currentSavings }: SavingsGrowthCalcula
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="account-name">Account Name</Label>
+            <Input
+              id="account-name"
+              type="text"
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              placeholder="e.g., Emergency Fund"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button onClick={saveAccount} className="flex items-center gap-2">
+              <Save className="h-4 w-4" />
+              Save Account
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-primary/10 p-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
@@ -147,7 +244,43 @@ export const SavingsGrowthCalculator = ({ currentSavings }: SavingsGrowthCalcula
           <p>• Total contributions: {formatCurrency(totalContributions)}</p>
           <p>• Interest earned: {formatCurrency(totalInterest)}</p>
           <p>• Effective return: {((finalAmount / totalContributions - 1) * 100).toFixed(1)}%</p>
+          <p>• Tax on interest: As per income tax slab rates on interest income</p>
         </div>
+
+        {savedAccounts.length > 0 && (
+          <div>
+            <h4 className="font-semibold mb-4">Your Saved Accounts</h4>
+            <div className="space-y-3">
+              {savedAccounts.map((account) => {
+                const futureValue = account.current_balance * Math.pow(1 + account.interest_rate / 100, years) + 
+                  (account.monthly_contribution * 12 * years);
+                const interest = futureValue - account.current_balance - (account.monthly_contribution * 12 * years);
+                
+                return (
+                  <div key={account.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div>
+                      <p className="font-medium">{account.account_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Balance: {formatCurrency(account.current_balance)} • {account.interest_rate}% interest
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Monthly: {formatCurrency(account.monthly_contribution)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteAccount(account.id)}
+                      className="h-8 w-8 p-0 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

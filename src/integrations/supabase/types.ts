@@ -41,6 +41,45 @@ export type Database = {
         }
         Relationships: []
       }
+      crypto_holdings: {
+        Row: {
+          amount: number
+          created_at: string
+          current_price: number
+          id: string
+          name: string
+          purchase_date: string
+          purchase_price: number
+          symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          current_price: number
+          id?: string
+          name: string
+          purchase_date?: string
+          purchase_price: number
+          symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          current_price?: number
+          id?: string
+          name?: string
+          purchase_date?: string
+          purchase_price?: number
+          symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -104,6 +143,72 @@ export type Database = {
           updated_at?: string
           user_id?: string
           username?: string | null
+        }
+        Relationships: []
+      }
+      savings_accounts: {
+        Row: {
+          account_name: string
+          created_at: string
+          current_balance: number
+          id: string
+          interest_rate: number
+          monthly_contribution: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_name: string
+          created_at?: string
+          current_balance: number
+          id?: string
+          interest_rate: number
+          monthly_contribution?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string
+          created_at?: string
+          current_balance?: number
+          id?: string
+          interest_rate?: number
+          monthly_contribution?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sip_investments: {
+        Row: {
+          created_at: string
+          expected_return: number
+          id: string
+          monthly_amount: number
+          start_date: string
+          tenure_years: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_return: number
+          id?: string
+          monthly_amount: number
+          start_date?: string
+          tenure_years: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_return?: number
+          id?: string
+          monthly_amount?: number
+          start_date?: string
+          tenure_years?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
