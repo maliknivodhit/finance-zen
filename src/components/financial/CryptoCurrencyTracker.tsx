@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,8 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, DollarSign, Coins, Plus, RefreshCw } from "lucide-react";
 import { formatCurrency } from "../dashboard/StatCard";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 
 interface CryptoAsset {
   id: string;
@@ -26,106 +23,40 @@ interface CurrencyRate {
 }
 
 export const CryptoCurrencyTracker = () => {
-  const { user } = useAuth();
   const [cryptoAssets, setCryptoAssets] = useState<CryptoAsset[]>([]);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAsset, setNewAsset] = useState({ symbol: "", amount: "" });
 
-  // Load crypto assets from localStorage on component mount
-  useEffect(() => {
-    if (user?.id) {
-      const savedAssets = localStorage.getItem(`crypto_assets_${user.id}`);
-      if (savedAssets) {
-        try {
-          const assets = JSON.parse(savedAssets);
-          setCryptoAssets(assets);
-          // Update prices for saved assets immediately
-          updateAssetPrices(assets);
-        } catch (error) {
-          console.error('Error loading saved assets:', error);
-        }
-      }
-    }
-  }, [user?.id]);
-
-  // Save crypto assets to localStorage whenever they change
-  useEffect(() => {
-    if (user?.id && cryptoAssets.length >= 0) {
-      if (cryptoAssets.length === 0) {
-        localStorage.removeItem(`crypto_assets_${user.id}`);
-      } else {
-        localStorage.setItem(`crypto_assets_${user.id}`, JSON.stringify(cryptoAssets));
-      }
-    }
-  }, [cryptoAssets, user?.id]);
-
-  // Clear assets when user logs out
-  useEffect(() => {
-    if (!user?.id) {
-      setCryptoAssets([]);
-    }
-  }, [user?.id]);
-
-  // Fetch live crypto prices from CoinGecko API
+  // Fetch real crypto prices from CoinGecko API
   const fetchCryptoData = async () => {
     try {
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,solana,dogecoin,chainlink,litecoin,binancecoin,ripple&vs_currencies=inr&include_24hr_change=true',
-        {
-          headers: {
-            'Accept': 'application/json',
-          }
-        }
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,cardano,polkadot,solana&vs_currencies=usd&include_24hr_change=true'
       );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
       const data = await response.json();
       
       return {
         bitcoin: { 
-          price: Math.round(data.bitcoin?.inr || 8150000),
-          change: parseFloat(data.bitcoin?.inr_24h_change?.toFixed(2) || '0')
+          price: Math.round(data.bitcoin?.usd * 83.25), // Convert to INR
+          change: parseFloat(data.bitcoin?.usd_24h_change?.toFixed(2) || '0')
         },
         ethereum: { 
-          price: Math.round(data.ethereum?.inr || 303750),
-          change: parseFloat(data.ethereum?.inr_24h_change?.toFixed(2) || '0')
+          price: Math.round(data.ethereum?.usd * 83.25), 
+          change: parseFloat(data.ethereum?.usd_24h_change?.toFixed(2) || '0')
         },
         cardano: { 
-          price: parseFloat((data.cardano?.inr || 74.09).toFixed(2)),
-          change: parseFloat(data.cardano?.inr_24h_change?.toFixed(2) || '0')
+          price: parseFloat((data.cardano?.usd * 83.25).toFixed(2)), 
+          change: parseFloat(data.cardano?.usd_24h_change?.toFixed(2) || '0')
         },
         polkadot: { 
-          price: parseFloat((data.polkadot?.inr || 703.63).toFixed(2)),
-          change: parseFloat(data.polkadot?.inr_24h_change?.toFixed(2) || '0')
+          price: parseFloat((data.polkadot?.usd * 83.25).toFixed(2)), 
+          change: parseFloat(data.polkadot?.usd_24h_change?.toFixed(2) || '0')
         },
         solana: { 
-          price: Math.round(data.solana?.inr || 15743),
-          change: parseFloat(data.solana?.inr_24h_change?.toFixed(2) || '0')
-        },
-        dogecoin: { 
-          price: parseFloat((data.dogecoin?.inr || 28.5).toFixed(2)),
-          change: parseFloat(data.dogecoin?.inr_24h_change?.toFixed(2) || '0')
-        },
-        chainlink: { 
-          price: Math.round(data.chainlink?.inr || 2456),
-          change: parseFloat(data.chainlink?.inr_24h_change?.toFixed(2) || '0')
-        },
-        litecoin: { 
-          price: Math.round(data.litecoin?.inr || 12500),
-          change: parseFloat(data.litecoin?.inr_24h_change?.toFixed(2) || '0')
-        },
-        binancecoin: { 
-          price: Math.round(data.binancecoin?.inr || 45000),
-          change: parseFloat(data.binancecoin?.inr_24h_change?.toFixed(2) || '0')
-        },
-        ripple: { 
-          price: parseFloat((data.ripple?.inr || 185.5).toFixed(2)),
-          change: parseFloat(data.ripple?.inr_24h_change?.toFixed(2) || '0')
+          price: Math.round(data.solana?.usd * 83.25), 
+          change: parseFloat(data.solana?.usd_24h_change?.toFixed(2) || '0')
         }
       };
     } catch (error) {
@@ -136,12 +67,7 @@ export const CryptoCurrencyTracker = () => {
         ethereum: { price: 303750, change: 1.8 },
         cardano: { price: 74.09, change: 4.1 },
         polkadot: { price: 703.63, change: 2.7 },
-        solana: { price: 15743, change: 6.3 },
-        dogecoin: { price: 28.5, change: -2.1 },
-        chainlink: { price: 2456, change: 3.8 },
-        litecoin: { price: 12500, change: 1.2 },
-        binancecoin: { price: 45000, change: 4.5 },
-        ripple: { price: 185.5, change: -1.8 }
+        solana: { price: 15743, change: 6.3 }
       };
     }
   };
@@ -151,28 +77,6 @@ export const CryptoCurrencyTracker = () => {
     { symbol: "EUR/INR", rate: 90.45, change24h: -0.25 },
     { symbol: "GBP/INR", rate: 105.30, change24h: 0.45 }
   ];
-
-  const updateAssetPrices = async (assets: CryptoAsset[]) => {
-    try {
-      const cryptoData = await fetchCryptoData();
-      
-      const updatedAssets = assets.map(asset => {
-        const realData = cryptoData[asset.symbol.toLowerCase() as keyof typeof cryptoData];
-        if (realData) {
-          return {
-            ...asset,
-            currentPrice: realData.price,
-            priceChange24h: realData.change
-          };
-        }
-        return asset;
-      });
-      
-      setCryptoAssets(updatedAssets);
-    } catch (error) {
-      console.error('Error updating asset prices:', error);
-    }
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -229,17 +133,7 @@ export const CryptoCurrencyTracker = () => {
   };
 
   const removeCryptoAsset = (id: string) => {
-    const updatedAssets = cryptoAssets.filter(asset => asset.id !== id);
-    setCryptoAssets(updatedAssets);
-    
-    // Update localStorage
-    if (user) {
-      if (updatedAssets.length === 0) {
-        localStorage.removeItem(`crypto_assets_${user.id}`);
-      } else {
-        localStorage.setItem(`crypto_assets_${user.id}`, JSON.stringify(updatedAssets));
-      }
-    }
+    setCryptoAssets(prev => prev.filter(asset => asset.id !== id));
   };
 
   useEffect(() => {
@@ -333,11 +227,6 @@ export const CryptoCurrencyTracker = () => {
                     <option value="cardano">Cardano (ADA)</option>
                     <option value="polkadot">Polkadot (DOT)</option>
                     <option value="solana">Solana (SOL)</option>
-                    <option value="dogecoin">Dogecoin (DOGE)</option>
-                    <option value="chainlink">Chainlink (LINK)</option>
-                    <option value="litecoin">Litecoin (LTC)</option>
-                    <option value="binancecoin">Binance Coin (BNB)</option>
-                    <option value="ripple">XRP (XRP)</option>
                   </select>
                 </div>
                 <div>
