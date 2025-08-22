@@ -1,73 +1,40 @@
-# Welcome to your Lovable project
+# 💰 FinanceZen  
 
-## Project info
+FinanceZen is a personal finance tracker that helps you manage income, expenses, savings, and investments — all in one place.  
+It provides a simple dashboard with insightful analytics to help you stay in control of your money and build financial peace of mind.  
 
-**URL**: https://lovable.dev/projects/5d9ec230-059a-469d-9680-9bdccf187a45
+---
 
-## How can I edit this code?
+## 🌿 Why the name *FinanceZen*?  
+The word **Zen** comes from the idea of calmness, balance, and mindfulness.  
+Just like Zen promotes inner peace, **FinanceZen** promotes **financial peace** by making money management simple, organized, and stress-free.  
 
-There are several ways of editing your application.
+In short:  
+**FinanceZen = Financial Management + Peace of Mind**  
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5d9ec230-059a-469d-9680-9bdccf187a45) and start prompting.
+## 🚀 Features  
+- **User Authentication** – Login / Signup system for personal tracking.  
+- **Dashboard Overview** – View total balance, income, expenses, and savings rate.  
+- **Add Transactions** – Track daily income & expenses easily.  
+- **Set Budgets** – Control overspending by setting monthly/weekly budgets.  
+- **Expense Breakdown** – Visualize spending categories.  
+- **Recent Transactions** – Quick history of last expenses.  
+- **Advanced Tools (Coming Soon):**  
+  - Salary-based yearly income & tax calculation.  
+  - Saving-based future earnings projection.  
+  - SIP return calculator.  
+  - Crypto/asset management.  
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 🛠️ Tech Stack  
+- **Frontend:** HTML, CSS, JavaScript (or React if applicable)  
+- **Backend:** Python (Flask/Django) / Node.js (adjust based on your implementation)  
+- **Database:** MySQL / MongoDB / SQLite  
+- **Other:** Charting libraries for analytics  
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/5d9ec230-059a-469d-9680-9bdccf187a45) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
