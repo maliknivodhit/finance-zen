@@ -19,7 +19,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is already authenticated
+  // Check if user is already authenticated and handle email verification
   useEffect(() => {
     console.log('Auth useEffect running, checking user session...');
     const checkUser = async () => {
@@ -34,8 +34,28 @@ const Auth = () => {
         console.error('Error checking session:', error);
       }
     };
+    
+    // Listen for auth state changes (including email verification)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log('Auth state change:', event, session);
+        if (event === 'SIGNED_IN' && session) {
+          toast({
+            title: "Welcome!",
+            description: "Successfully logged in.",
+          });
+          navigate('/');
+        }
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed');
+        }
+      }
+    );
+
     checkUser();
-  }, [navigate]);
+    
+    return () => subscription.unsubscribe();
+  }, [navigate, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
